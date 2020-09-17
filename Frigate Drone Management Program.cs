@@ -20,6 +20,10 @@ public enum SwarmStatus{
 private List<IMyProgrammableBlock> DockPrograms = new List<IMyProgrammableBlock>();
 private IMyCockpit FlightDeck = null; //Block must be named "Command Seat"
 private IMyTimerBlock FlightTimer = null; //Block must be named "Flight Timer Block"
+private IMyTextPanel DroneStatusLCD = null; //Block must be named "Drone Status LCD"
+private IMyTextPanel ShipListLCD = null; //Block must be named "Ship List LCD"
+private IMyTextPanel CommandInformationLCD = null; //Block must be named "Command Info LCD"
+private IMyTextPanel DroneProgramLCD = null; //Block must be named "Drone Program LCD"
 
 private List<string> listener_tags = new List<string>{"Zihl Combat Assist Drone", "SensorReport"};
 private List<string> DroneIDs = new List<string>();
@@ -35,6 +39,91 @@ private Vector3D follow_velocity = new Vector3D(0,0,0);
 private long Cycle = 0;
 private long Cycle_Long = 1;
 private char loadingChar = '|';
+
+private void UpdateDroneStatus(){
+	if(DroneStatusLCD!=null){
+		DroneStatusLCD.WriteText(Status.ToString(), false);
+	}
+}
+
+private void UpdateShipList(){
+	if(ShipListLCD!=null){
+		if(EnemyShips.Count > 0){
+			ShipListLCD.WriteText("Enemy Ships\n", false);
+			List<double> distances = new List<double>();
+			foreach(EnemyShip ship in EnemyShips){
+				distances.Add((Me.CubeGrid.GetPosition() - ship.position).Length());
+			}
+			distances.Sort();
+			int count = Math.Min(5, distances.Count);
+			double max_distance = distances[index-1];
+			List<EnemyShip> nearest = new List<EnemyShip>();
+			for(int i=0; i<count; i++){
+				double get_distance = distances[i];
+				foreach(EnemyShip ship in EnemyShips){
+					double distance = (Me.CubeGrid.GetPosition() - ship.position).Length();
+					if(distance < get_distance + 0.5 && distance > get_distance - 0.5){
+						nearest.Add(ship);
+						break;
+					}
+				}
+			}
+			for(int i=0; i<nearest.Count; i++){
+				EnemyShip ship = nearest[i];
+				ShipListLCD.WriteText((i+1).ToString() + ": ID #" + ship.EntityId.ToString() + '\n', true);
+				double distance = (Me.CubeGrid.GetPosition() - ship.position).Length();
+				if(distance >= 1000){
+					float kilometers = (float) Math.Round(distance / 1000, 2);
+					ShipListLCD.WriteText("\t" + kilometers + " Km\n", true);
+				}
+				else{
+					ShipListLCD.WriteText("\t" + ((int)distance) + " m\n", true);
+				}
+				ShipListLCD.WriteText("\tAt :(X:" + ((long)ship.position.X).ToString() + " Y:" + ((long)ship.position.Y).ToString() + " Z:" + ((long)ship.position.Z).ToString() + ")\n\n", true);
+			}
+		}
+		else {
+			ShipListLCD.WriteText("No Enemy Ships on Record", false);
+		}
+	}
+}
+
+private void UpdateCommandInformation(string mode){
+	if(mode.Equals("guess")){
+		CommandInformationLCD.WriteText("Match Target Velocity\n", false);
+		CommandInformationLCD.WriteText("Current Estimated Distance\n", true);
+		if(guess_distance >= 1000){
+			float kilometers = (float) Math.Round(guess_distance / 1000, 2);
+			CommandInformationLCD.WriteText(kilometers + " Km\n", true);
+		}
+		else{
+			CommandInformationLCD.WriteText(((int)guess_distance) + " m\n", true);
+		}
+	}
+	else if(mode.Equals("follow")){
+		CommandInformationLCD.Writetext("Drones set to Swarm\n", false);
+		CommandInformationLCD.WriteText("Swarming :(X:" + ((long)follow_position.position.X).ToString() + " Y:" + ((long)follow_position.position.Y).ToString() + " Z:" + ((long)follow_position.position.Z).ToString() + ")\n\n", true);
+		CommandInformationLCD.WriteText("Swarming at " + follow_velocity.Length().ToString() + " m/s\n", true);
+		double distance = (Me.CubeGrid.GetPosition() - follow_position).Length();
+		if(distance >= 1000){
+			float kilometers = (float) Math.Round(distance / 1000, 2);
+			CommandInformationLCD.WriteText(kilometers + " Km away\n", true);
+		}
+		else if(distance > 10){
+			CommandInformationLCD.WriteText(((int)distance) + " m away\n", true);
+		}
+	}
+}
+
+private bool UpdatedDroneProgram = false;
+private void UpdateDroneProgram(string information){
+	if(!UpdatedDroneProgram){
+		UpdatedDroneProgram = true;
+		if(DroneProgramLCD!=null){
+			DroneProgramLCD.WriteText(information, false);
+		}
+	}
+}
 
 
 private bool SetBlocks(){
@@ -52,10 +141,35 @@ private bool SetBlocks(){
 		Echo("Could not find FlightDeck (CustomName must be set to \"Command Seat\"");
 		return false;
 	}
+	
 	FlightTimer = (IMyTimerBlock) GridTerminalSystem.GetBlockWithName("Flight Timer Block");
 	if(FlightTimer == null){
 		Echo("Could not find FlightTimer (CustomName must be set to \"Flight Timer Block\"");
 		return false;
+	}
+	
+	DroneStatusLCD = (IMyTextPanel) GridTerminalSystem.GetBlockWithName("Drone Status LCD");
+	if(DroneStatusLCD != null){
+		DroneStatusLCD.WritePublicTitle(DroneStatusLCD.CustomName, false);
+	}
+	
+	ShipListLCD = (IMyTextPanel) GridTerminalSystem.GetBlockWithName("Ship List LCD");
+	if(ShipListLCD != null){
+		ShipListLCD.WritePublicTitle(ShipListLCD.CustomName, false);
+	}
+	
+	CommandInformationLCD = (IMyTextPanel) GridTerminalSystem.GetBlockWithName("Command Info LCD");
+	if(CommandInformationLCD == null){
+		Echo("Could not find CommandInformationLCD (CustomName must be set to \"Command Info LCD\"");
+		return false;
+	}
+	else {
+		CommandInformationLCD.WritePublicTitle(CommandInformationLCD.CustomName, false);
+	}
+	
+	DroneProgramLCD = (IMyTextPanel) GridTerminalSystem.GetBlockWithName("Drone Program LCD");
+	if(DroneProgramLCD != null){
+		DroneProgramLCD.WritePublicTitle(DroneProgramLCD.CustomName, false);
 	}
 	
 	return true;
@@ -191,21 +305,25 @@ private void Scanner(){
 
 public void TweakGuess(double increase_by){
 	guess_distance += increase_by;
+	UpdateCommandInformation("guess");
 }
 
 public void ConfirmGuess(){
+	FlightDeck.DampenersOverride = true;
 	Status = SwarmStatus.Attacking;
+	UpdateDroneStatus();
 	follow_velocity = FlightDeck.GetShipVelocities().LinearVelocity;
 	Vector3D direction = follow_velocity;
 	direction.Normalize();
 	follow_position = FlightDeck.GetPosition() + (guess_distance * direction);
 	SwarmAll();
 	FlightTimer.StartCountdown();
-	guess_distance = 0;
+	UpdateDroneProgram("Confirmed guess\n(" + follow_position.ToString() ")\n" + follow_velocity.Length().ToString() + " m/s\nStopping to deploy drones...");
 }
 
 public void EnvoyAll(){
 	Status = SwarmStatus.Defending;
+	UpdateDroneStatus();
 	follow_position = Me.CubeGrid.GetPosition();
 	follow_velocity = FlightDeck.GetShipVelocities().LinearVelocity;
 	SwarmAll();
@@ -218,18 +336,24 @@ public void SwarmAll(){
 		Send(DroneIDs[i], "Swarm", '(' + position.ToString() + ");(" + follow_velocity.ToString() + ')');
 		Echo("Instructed " + DroneIDs[i] + " to Swarm near " + position.ToString());
 	}
+	UpdateDroneProgram("Updated Swarming\n(" follow_position.ToString() + ")\n" + follow_velocity.Length().ToString() + " m/s");
+	UpdateCommandInformation("follow");
 }
 
 public void DockAll(){
-	FlightTimer.StopCountdown();
+	FlightDeck.DampenersOverride = true;
+	UpdateCommandInformation("guess");
 	if(FlightDeck.GetShipSpeed() < 0.01){
+		FlightTimer.StopCountdown();
+		guess_distance = 0;
 		List<bool> CanAcceptDock = new List<bool>();
 		Status = SwarmStatus.Docking;
+		UpdateDroneStatus();
 		int count = 0;
 		for(int i=0; i<DockPrograms.Count; i++){
 			if(DockPrograms.CustomData.Length>0){
 				string[] Data = DockPrograms.CustomData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-				if(Data[0].Equals("Undocked")){
+				if(Data[0].Equals("Undocked") || Data[0].Equals("Docking")){
 					count++;
 					CanAcceptDock.Add(true);
 				}
@@ -255,12 +379,15 @@ public void DockAll(){
 	}
 	else {
 		Echo("Cannot Dock: Ship Speed too high (" + FlightDeck.GetShipSpeed().ToString() + " mps)\n");
+		UpdateDroneProgram("Cannot Dock: Ship Speed too high\n(" + FlightDeck.GetShipSpeed().ToString() + " mps)\nSlowing to allow for docking; reconfirm docking when able");
+		StopAll();
 	}
 }
 
 public void StopAll(){
 	Send("Zihl Combat Assist Drone", "Stop", "");
 	Echo("Stopped all Combat Drones\n");
+	UpdateDroneProgram("Stopped all Combat Drones");
 }
 
 private bool UpdatedFollow = false;
@@ -293,6 +420,7 @@ private void Follow(){
 
 public void Main(string argument, UpdateType updateSource)
 {
+	UpdatedDroneProgram = false;
 	UpdatedFollow = false;
     Cycle_Long = (Cycle_Long + ((++Cycle)/Int64.MaxValue)) % Int64.MaxValue;
 	Cycle = Cycle % Int64.MaxValue;
@@ -317,6 +445,7 @@ public void Main(string argument, UpdateType updateSource)
 			EnvoyAll();
 	}
 	else if(argument.ToLower().Equals("defend")){
+		FlightDeck.DampenersOverride = true;
 		EnvoyAll();
 	}
 	else if(argument.ToLower().Equals("dock")){
@@ -324,6 +453,10 @@ public void Main(string argument, UpdateType updateSource)
 	}
 	else if(argument.ToLower().Equals("confirm")){
 		ConfirmGuess();
+	}
+	else if(argument.ToLower().Equals("reset")){
+		guess_distance = 0;
+		UpdateCommandInformation("guess");
 	}
 	else if(argument.ToLower().Contains("tweak:")){
 		try{

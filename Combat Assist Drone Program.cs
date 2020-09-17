@@ -98,7 +98,6 @@ public void UpdateTask(DroneTask new_task){
 					spotlight.ApplyAction("OnOff_On");
 				}
 				DroneAntenna.Radius = (float) Math.Max(5000, 2 * (DroneRemote.GetPosition() - follow_position).Length());
-				DroneConnector.Disconnect();
 				break;
 			case DroneTask.Waiting:
 				DroneRemote.ClearWaypoints();
@@ -164,12 +163,22 @@ public void UpdateTask(DroneTask new_task){
 				DroneRemote.SetAutoPilotEnabled(true);
 				break;
 			case DroneTask.Undocking:
-				DroneRemote.ApplyAction("Forward");
-				DroneRemote.AddWaypoint(DockAlign, "Undocking");
-				DroneRemote.SpeedLimit = 10;
-				DroneRemote.SetCollisionAvoidance(true);
-				DroneRemote.SetDockingMode(true);
-				DroneRemote.SetAutoPilotEnabled(true);
+				DroneRemote.DampenersOverride = true;
+				if(DroneRemote.GetShipSpeed()>0.01){
+					Echo("Waiting for slowdown\n");
+				}
+				else{
+					DroneConnector.Disconnect();
+					Vector3D forward = (Me.GetPosition() - DroneRemote.GetPosition());
+					forward.Normalize();
+					forward = (forward * 40) + DroneRemote.GetPosition();
+					DroneRemote.ApplyAction("Forward");
+					DroneRemote.AddWaypoint(forward, "Undocking");
+					DroneRemote.SpeedLimit = 10;
+					DroneRemote.SetCollisionAvoidance(true);
+					DroneRemote.SetDockingMode(true);
+					DroneRemote.SetAutoPilotEnabled(true);
+				}
 				break;
 			case DroneTask.Returning:
 				DroneRemote.ApplyAction("Forward");
@@ -216,9 +225,29 @@ public void PerformCurrentTask(){
 				}
 				break;
 			case DroneTask.Undocking:
-				target = DroneRemote.CurrentWaypoint.Coords;
-				if((target - DroneRemote.GetPosition()).Length() < 5 && DroneRemote.GetShipSpeed() < 5){
-					NextTask();
+				if(DroneRemote.IsAutoPilotEnabled){
+					target = DroneRemote.CurrentWaypoint.Coords;
+					if((target - DroneRemote.GetPosition()).Length() < 5 && DroneRemote.GetShipSpeed() < 5){
+						NextTask();
+					}
+				}
+				else{
+					DroneRemote.DampenersOverride = true;
+					if(DroneRemote.GetShipSpeed()>0.01){
+						Echo("Waiting for slowdown\n");
+					}
+					else{
+						DroneConnector.Disconnect();
+						Vector3D forward = (Me.GetPosition() - DroneRemote.GetPosition());
+						forward.Normalize();
+						forward = (forward * 40) + DroneRemote.GetPosition();
+						DroneRemote.ApplyAction("Forward");
+						DroneRemote.AddWaypoint(forward, "Undocking");
+						DroneRemote.SpeedLimit = 10;
+						DroneRemote.SetCollisionAvoidance(true);
+						DroneRemote.SetDockingMode(true);
+						DroneRemote.SetAutoPilotEnabled(true);
+					}
 				}
 				break;
 			case DroneTask.Returning:
