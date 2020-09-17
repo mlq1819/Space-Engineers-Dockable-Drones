@@ -102,7 +102,6 @@ public void Save()
 	}
 }
 
-
 private void Send(string Tag, string Message){
 	if(Tag.Contains(';'))
 		throw new ArgumentException("Tag may not contain a semicolon (" + Tag + ')');
@@ -122,7 +121,7 @@ private void ParseMessage(MyIGCMessage Message){
 		string Data = Message.Data.ToString().Substring(Message.Data.ToString().IndexOf('<')+1);
 		Data = Data.Substring(0, Data.IndexOf('>'));
 		//TODO - add commands here to parse
-		if(Message.Tag.Equals("Zihl Combat Assist Drone") && (Command.Equals("Started") || Command.Equals("NewID")){
+		if(Message.Tag.Equals("Zihl Combat Assist Drone") && (Command.Equals("Started") || Command.Equals("NewID"))){
 			listener_tags.Add(Data);
 			DroneIDs.Add(Data);
 			Random rnd = new Random();
@@ -164,8 +163,8 @@ private void ParseMessage(MyIGCMessage Message){
 	catch(FormatException){
 		Echo("Unknown Command on channel \"" + Message.Tag + "\": " + Message.Data.ToString());
 	}
+	
 }
-
 
 private void Scanner(){
 	for(int i=0; i<listener_tags.Count; i++){
@@ -202,6 +201,7 @@ public void ConfirmGuess(){
 	follow_position = FlightDeck.GetPosition() + (guess_distance * direction);
 	SwarmAll();
 	FlightTimer.StartCountdown();
+	guess_distance = 0;
 }
 
 public void EnvoyAll(){
@@ -258,6 +258,11 @@ public void DockAll(){
 	}
 }
 
+public void StopAll(){
+	Send("Zihl Combat Assist Drone", "Stop", "");
+	Echo("Stopped all Combat Drones\n");
+}
+
 private bool UpdatedFollow = false;
 private void Follow(){
 	if(UpdatedFollow)
@@ -311,7 +316,22 @@ public void Main(string argument, UpdateType updateSource)
 		if(Status == SwarmStatus.Defending)
 			EnvoyAll();
 	}
-	else {
-		
+	else if(argument.ToLower().Equals("defend")){
+		EnvoyAll();
+	}
+	else if(argument.ToLower().Equals("dock")){
+		DockAll();
+	}
+	else if(argument.ToLower().Equals("confirm")){
+		ConfirmGuess();
+	}
+	else if(argument.ToLower().Contains("tweak:")){
+		try{
+			double tweak = double.Parse(argument.Substring(argument.ToLower().IndexOf("tweak:") + "tweak:".Length).Trim());
+			TweakGuess(tweak);
+		}
+		catch(Exception){
+			Echo("Invalid argument\n");
+		}
 	}
 }

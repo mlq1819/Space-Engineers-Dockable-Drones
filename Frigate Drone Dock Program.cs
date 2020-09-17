@@ -45,7 +45,6 @@ public void UpdateStatus(DockingStatus new_status){
 			foreach(IMyAirtightHangarDoor door in DockDoors){
 				door.CloseDoor();
 			}
-			Runtime.UpdateFrequency = UpdateFrequency.None;
 			break;
 		case DockingStatus.Undocked:
 			new_color = new Color(255, 239, 137, 255);
@@ -59,12 +58,6 @@ public void UpdateStatus(DockingStatus new_status){
 			}
 			foreach(IMyAirtightHangarDoor door in DockDoors){
 				door.CloseDoor();
-			}
-			if(HasPossibleDockingEntity()){
-				Runtime.UpdateFrequency = UpdateFrequency.Update100;
-			}
-			else{
-				Runtime.UpdateFrequency = UpdateFrequency.None;
 			}
 			break;
 		case DockingStatus.Undocking:
@@ -81,7 +74,6 @@ public void UpdateStatus(DockingStatus new_status){
 			foreach(IMyAirtightHangarDoor door in DockDoors){
 				door.OpenDoor();
 			}
-			Runtime.UpdateFrequency = UpdateFrequency.None;
 			break;
 		case DockingStatus.Docking:
 			new_color = new Color(151, 239, 255, 255);
@@ -97,7 +89,6 @@ public void UpdateStatus(DockingStatus new_status){
 			foreach(IMyAirtightHangarDoor door in DockDoors){
 				door.OpenDoor();
 			}
-			Runtime.UpdateFrequency = UpdateFrequency.Update100;
 			break;
 		case DockingStatus.Docked:
 			new_color = new Color(151, 239, 255, 255);
@@ -118,10 +109,8 @@ public void UpdateStatus(DockingStatus new_status){
 				else
 					DockingRotor.TargetVelocityRPM = (float) 6.0;
 			}
-			Runtime.UpdateFrequency = UpdateFrequency.Update100;
 			break;
 	}
-	Me.CustomData = DockStatus.ToString() + "\n" + DockPosition1.ToString() + "\n" + DockPosition2.ToString() + "\n" + DockPosition3.ToString();
 	Me.GetSurface(0).WriteText("Dock Status\n" + DockStatus.ToString(), false);
 }
 
@@ -438,17 +427,23 @@ public DockingStatus GetStatus(){
 	}
 }
 
+public void UpdateCustomData(){
+	Vector3D down_vector = DockingRotor.GetPosition() - DockingCargo.GetPosition();
+	down_vector.Normalize();
+	Vector3D out_vector = DockingBattery.GetPosition() - DockingCargo.GetPosition();
+	out_vector.Normalize();
+	DockPosition3 = DockingConnector.GetPosition() + (5.5 * down_vector) - (out_vector);
+	DockPosition2 = DockPosition2 + (40 * out_vector);
+	DockPosition1 = DockPosition2 + (10 * down_vector);
+	Me.CustomData = DockStatus.ToString() + "\n" + DockPosition1.ToString() + "\n" + DockPosition2.ToString() + "\n" + DockPosition3.ToString();
+}
+
 public Program()
 {
 	if(SetBlocks()){
 		Echo("Successfully set blocks\n");
-		Vector3D down_vector = DockingRotor.GetPosition() - DockingCargo.GetPosition();
-		down_vector.Normalize();
-		Vector3D out_vector = DockingBattery.GetPosition() - DockingCargo.GetPosition();
-		out_vector.Normalize();
-		DockPosition3 = DockingConnector.GetPosition() + (5.5 * down_vector) - (out_vector);
-		DockPosition2 = DockPosition2 + (40 * out_vector);
-		DockPosition1 = DockPosition2 + (10 * down_vector);
+		Runtime.UpdateFrequency = UpdateFrequency.Update100;
+		UpdateCustomData();
 		try{
 			string line = this.Storage;
 			if(this.Storage.Contains('\n'))
@@ -471,6 +466,7 @@ public Program()
 	}
 	else{
 		Echo("Failed to set blocks\n");
+		Runtime.UpdateFrequency = UpdateFrequency.None;
 		try{
 			UpdateStatus(DockingStatus.Dysfunctional);
 		}
@@ -491,6 +487,7 @@ public void Save()
 public void Main(string argument, UpdateType updateSource)
 {
 	UpdateStatus(GetStatus());
+	UpdateCustomData();
 	Echo("DockStatus: " + DockStatus.ToString() + "\n");
 	Echo("LastStatus: " + LastStatus.ToString() + "\n");
 }

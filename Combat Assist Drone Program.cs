@@ -654,6 +654,10 @@ private void ParseMessage(MyIGCMessage Message){
 			DroneTimer.StopCountdown();
 			DroneTimer.StartCountdown();
 		}
+		else if(Command.Equals("Stop")){
+			Echo("Received command to stop\n");
+			UpdateTask(DroneTask.Idle);
+		}
 		else{
 			Echo("Unknown Command on channel \"" + Message.Tag + "\": " + Message.Data);
 		}
