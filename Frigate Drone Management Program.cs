@@ -24,6 +24,7 @@ private IMyTextPanel DroneStatusLCD = null; //Block must be named "Drone Status 
 private IMyTextPanel ShipListLCD = null; //Block must be named "Ship List LCD"
 private IMyTextPanel CommandInformationLCD = null; //Block must be named "Command Info LCD"
 private IMyTextPanel DroneProgramLCD = null; //Block must be named "Drone Program LCD"
+private IMyTextPanel CommsInformationLCD = null; //Block must be named "Communications LCD"
 
 private List<string> listener_tags = new List<string>{"Zihl Combat Assist Drone", "SensorReport"};
 private List<string> DroneIDs = new List<string>();
@@ -172,6 +173,11 @@ private bool SetBlocks(){
 		DroneProgramLCD.WritePublicTitle(DroneProgramLCD.CustomName, false);
 	}
 	
+	CommsInformationLCD = (IMyTextPanel) GridTerminalSystem.GetBlockWithName("Communications LCD");
+	if(CommsInformationLCD != null){
+		CommsInformationLCD.WritePublicTitle(CommsInformationLCD.CustomName, false);
+	}
+	
 	return true;
 }
 
@@ -274,8 +280,9 @@ private void ParseMessage(MyIGCMessage Message){
 			Echo("Unknown Command on channel \"" + Message.Tag + "\": " + Message.Data);
 		}
 	}
-	catch(FormatException){
+	catch(Exception e){
 		Echo("Unknown Command on channel \"" + Message.Tag + "\": " + Message.Data.ToString());
+		throw e;
 	}
 	
 }
@@ -293,6 +300,9 @@ private void Scanner(){
 			while(listeners[i].HasPendingMessage){
 				MyIGCMessage message = new MyIGCMessage();
 				message = listeners[i].AcceptMessage();
+				if(CommsInformationLCD != null){
+					CommsInformationLCD.WriteText(message.Tag + ":" + message.Data.ToString(), false);
+				}
 				ParseMessage(message);
 			}
 		}

@@ -753,6 +753,7 @@ public void Main(string argument, UpdateType updateSource)
 	Echo("Cycle " + Cycle_Long.ToString() + '-' + Cycle.ToString() + "(" + loadingChar + ")");
 	Echo("Current Task: " + CurrentTask.ToString());
 	Echo("Last Task: " + LastTask.ToString());
+	Scanner();
 	if(TaskQueue.Count > 0){
 		Echo("Next Task: " + TaskQueue.Peek());
 	}
