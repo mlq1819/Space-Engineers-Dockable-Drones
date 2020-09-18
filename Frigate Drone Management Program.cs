@@ -1,8 +1,8 @@
 
 public struct EnemyShip{
-	long EntityId;
-	Vector3D position;
-	Vector3D velocity;
+	public long EntityId;
+	public Vector3D position;
+	public Vector3D velocity;
 	public EnemyShip(long e, Vector3D p, Vector3D v){
 		EntityId = e;
 		position = p;
@@ -56,7 +56,7 @@ private void UpdateShipList(){
 			}
 			distances.Sort();
 			int count = Math.Min(5, distances.Count);
-			double max_distance = distances[index-1];
+			double max_distance = distances[count-1];
 			List<EnemyShip> nearest = new List<EnemyShip>();
 			for(int i=0; i<count; i++){
 				double get_distance = distances[i];
@@ -101,8 +101,8 @@ private void UpdateCommandInformation(string mode){
 		}
 	}
 	else if(mode.Equals("follow")){
-		CommandInformationLCD.Writetext("Drones set to Swarm\n", false);
-		CommandInformationLCD.WriteText("Swarming :(X:" + ((long)follow_position.position.X).ToString() + " Y:" + ((long)follow_position.position.Y).ToString() + " Z:" + ((long)follow_position.position.Z).ToString() + ")\n\n", true);
+		CommandInformationLCD.WriteText("Drones set to Swarm\n", false);
+		CommandInformationLCD.WriteText("Swarming :(X:" + ((long)follow_position.X).ToString() + " Y:" + ((long)follow_position.Y).ToString() + " Z:" + ((long)follow_position.Z).ToString() + ")\n\n", true);
 		CommandInformationLCD.WriteText("Swarming at " + follow_velocity.Length().ToString() + " m/s\n", true);
 		double distance = (Me.CubeGrid.GetPosition() - follow_position).Length();
 		if(distance >= 1000){
@@ -181,15 +181,15 @@ public Program()
 		Runtime.UpdateFrequency = UpdateFrequency.Update100;
 		try{
 			int index = this.Storage.IndexOf("\nEnemies");
-			string[] Data = this.Storage.Substring(0, index).Trim().Split(';', StringSplitOptions.RemoveEmptyEntries);
+			string[] Data = this.Storage.Substring(0, index).Trim().Split(new []{';'}, StringSplitOptions.RemoveEmptyEntries);
 			Status = (SwarmStatus) Int32.Parse(Data[0].Trim());
 			Vector3D.TryParse(Data[1], out follow_position);
 			Vector3D.TryParse(Data[2], out follow_velocity);
 			
-			index += "\nEnemies".Length();
-			Data = this.Storage.Substring(index).Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries);
+			index += "\nEnemies".Length;
+			Data = this.Storage.Substring(index).Trim().Split(new []{'\n'}, StringSplitOptions.RemoveEmptyEntries);
 			foreach(string str in Data){
-				string[] Subdata = str.Trim().Split(';', StringSplitOptions.RemoveEmptyEntries);
+				string[] Subdata = str.Trim().Split(new []{';'}, StringSplitOptions.RemoveEmptyEntries);
 				long EntityId = Int64.Parse(Subdata[0]);
 				Vector3D p, v;
 				Vector3D.TryParse(Subdata[1], out p);
@@ -246,17 +246,17 @@ private void ParseMessage(MyIGCMessage Message){
 			Echo("Found new drone with ID \"" + Data + "\"\n");
 		}
 		else if(Message.Tag.Equals("SensorReport")){
-			string[] subdata = Data.Split(';', StringSplitOptions.RemoveEmptyEntries);
+			string[] subdata = Data.Split(new []{';'}, StringSplitOptions.RemoveEmptyEntries);
 			long EntityId = Int64.Parse(subdata[0].Trim());
 			Vector3D enemy_position, enemy_velocity;
 			Vector3D.TryParse(subdata[1], out enemy_position);
 			Vector3D.TryParse(subdata[2], out enemy_velocity);
 			bool has_data_on_record = false;
 			for(int i=0; i<EnemyShips.Count; i++){
-				if(EnemyShips[i] == EntityId){
+				if(EnemyShips[i].EntityId == EntityId){
 					has_data_on_record = true;
-					EnemyShips[i].position = enemy_position;
-					EnemyShips[i].velocity = enemy_velocity;
+					EnemyShip new_ship = new EnemyShip(EntityId, enemy_position, enemy_velocity);
+					EnemyShips[i] = new_ship;
 				}
 			}
 			if(!has_data_on_record){
@@ -318,7 +318,7 @@ public void ConfirmGuess(){
 	follow_position = FlightDeck.GetPosition() + (guess_distance * direction);
 	SwarmAll();
 	FlightTimer.StartCountdown();
-	UpdateDroneProgram("Confirmed guess\n(" + follow_position.ToString() ")\n" + follow_velocity.Length().ToString() + " m/s\nStopping to deploy drones...");
+	UpdateDroneProgram("Confirmed guess\n(" + follow_position.ToString() + ")\n" + follow_velocity.Length().ToString() + " m/s\nStopping to deploy drones...");
 }
 
 public void EnvoyAll(){
@@ -336,7 +336,7 @@ public void SwarmAll(){
 		Send(DroneIDs[i], "Swarm", '(' + position.ToString() + ");(" + follow_velocity.ToString() + ')');
 		Echo("Instructed " + DroneIDs[i] + " to Swarm near " + position.ToString());
 	}
-	UpdateDroneProgram("Updated Swarming\n(" follow_position.ToString() + ")\n" + follow_velocity.Length().ToString() + " m/s");
+	UpdateDroneProgram("Updated Swarming\n(" + follow_position.ToString() + ")\n" + follow_velocity.Length().ToString() + " m/s");
 	UpdateCommandInformation("follow");
 }
 
@@ -351,8 +351,8 @@ public void DockAll(){
 		UpdateDroneStatus();
 		int count = 0;
 		for(int i=0; i<DockPrograms.Count; i++){
-			if(DockPrograms.CustomData.Length>0){
-				string[] Data = DockPrograms.CustomData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+			if(DockPrograms[i].CustomData.Length>0){
+				string[] Data = DockPrograms[i].CustomData.Split(new []{'\n'}, StringSplitOptions.RemoveEmptyEntries);
 				if(Data[0].Equals("Undocked") || Data[0].Equals("Docking")){
 					count++;
 					CanAcceptDock.Add(true);
@@ -368,7 +368,7 @@ public void DockAll(){
 		for(int i=0; i<count && i<DroneIDs.Count; i++){
 			for(int j=0; j<CanAcceptDock.Count; j++){
 				if(CanAcceptDock[j]){
-					string[] Data = DockPrograms.CustomData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+					string[] Data = DockPrograms[i].CustomData.Split(new []{'\n'}, StringSplitOptions.RemoveEmptyEntries);
 					Send(DroneIDs[i], "Dock", '(' + Data[1] + ");(" + Data[2] + ");(" + Data[3] + ')');
 					Echo("Instructed " + DroneIDs[i] + " to Dock at " + Data[3]);
 					CanAcceptDock[j]=false;
@@ -398,13 +398,12 @@ private void Follow(){
 		follow_position = Me.CubeGrid.GetPosition();
 		follow_velocity = FlightDeck.GetShipVelocities().LinearVelocity;
 	}
-	target_position = 2 * follow_velocity * DroneTimer.TriggerDelay + follow_position;
-	Vector3D expected_position = follow_position + (follow_velocity * DroneTimer.TriggerDelay);
+	Vector3D expected_position = follow_position + (follow_velocity * FlightTimer.TriggerDelay);
 	double speed = follow_velocity.Length();
 	Vector3D movement_direction = follow_velocity;
 	movement_direction.Normalize();
-	double distance = (DroneRemote.GetPosition() - follow_position).Length();
-	bool catching_up = (DroneRemote.GetPosition() + 5*movement_direction - follow_position).Length() < distance;
+	double distance = (FlightDeck.GetPosition() - follow_position).Length();
+	bool catching_up = (FlightDeck.GetPosition() + 5*movement_direction - follow_position).Length() < distance;
 	if(distance > 200){
 		if(catching_up){
 			speed = Math.Min(100.0, speed + (distance / 200.0));
@@ -413,7 +412,6 @@ private void Follow(){
 			speed = Math.Max(1.0, speed - (distance / 200.0));
 		}
 	}
-	follow_speed = speed;
 	follow_position = expected_position;
 	UpdatedFollow = true;
 }
