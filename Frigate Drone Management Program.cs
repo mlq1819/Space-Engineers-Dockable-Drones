@@ -438,6 +438,7 @@ public void Main(string argument, UpdateType updateSource)
 	}
 	Echo("Cycle " + Cycle_Long.ToString() + '-' + Cycle.ToString() + "(" + loadingChar + ")");
 	Echo("Swarm Status: " + Status.ToString() + '\n');
+	Scanner();
 	if(argument.ToLower().Equals("Timer".ToLower()) && updateSource == UpdateType.Trigger){
 		if(Status == SwarmStatus.Defending)
 			EnvoyAll();
